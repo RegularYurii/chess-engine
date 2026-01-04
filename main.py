@@ -28,6 +28,8 @@ def load_images(): # better to implement in resources.py
 
 def main(): # limit the frames 
     pygame.init()
+    clock = pygame.time.Clock()
+
     running = True
     name = 'Board'
     game = engine()
@@ -51,7 +53,7 @@ def main(): # limit the frames
                     if col == 8 and row == 0:
                         sq_clicked = ()
                         clicks = []
-                        restart(game) # better to implement in engine.py
+                        game.restart() # better to implement in engine.py
                     elif col == 9 and row == 0:
                         pass # implement drawing here
                 elif sq_clicked == (col, row):  # check if the last click was on the same square, if so clear the sq_clicked 
@@ -62,18 +64,23 @@ def main(): # limit the frames
                     clicks.append(sq_clicked)
                     hl_pos_moves(sq_clicked, game)
                 if len(clicks) == 2: # if two squares were clicked and they're not the same then make a move
-                    print(clicks)
+                    #
                     if not game.board[clicks[0][1]][clicks[0][0]]:
-                        clicks = []
+                        clicks = [sq_clicked]
                         game.highlights.append(sq_clicked)
                     else:
-                        game.make_move(clicks)
-                        sq_clicked = ()
-                        clicks = []
-                        game.highlights = []
+                        if game.make_move(clicks):
+                            sq_clicked = ()
+                            clicks = []
+                            game.highlights = []
+                        else:
+                            clicks = [sq_clicked]
+                            game.highlights.append(sq_clicked)
+        
         draw_board(screen)
         draw_objects(screen, game.board, game.highlights)
         pygame.display.flip()
+        clock.tick(60)
         
 
 def draw_board(screen):
@@ -102,12 +109,6 @@ def draw_objects(screen, board, highlights):
     for i, t in enumerate(TOOLS):
         pygame.draw.rect(screen, "green", pygame.Rect(((i % 2) + DIMENSIONS) * SQ_SIZE, (i // tool_num) * SQ_SIZE, SQ_SIZE, SQ_SIZE))
         screen.blit(IMAGES[t], pygame.Rect(((i % 2) + DIMENSIONS) * SQ_SIZE, (i // tool_num) * SQ_SIZE, SQ_SIZE, SQ_SIZE))
-
-
-def restart(game):
-    game.log = []
-    game.highlights = []
-    game.reset()
         
 
 def hl_pos_moves(square, game):
