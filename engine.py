@@ -14,6 +14,7 @@ class engine():
         #board[row][col]
         self.log = []
         self.highlights = []
+        self.check = 0
     
     def reset_board(self): # resets the board only
         self.board = [
@@ -33,27 +34,31 @@ class engine():
         self.turn = -1
 
     def is_safe(self, square):
-        pass
+        return True
     
     # check if the line BETWEEN two squares is clear
     def is_line_clear(self, first, second): # redo
         # square = col, row
-        if first[0] == second[0]: # check rows because they're on the same column
-            if first[1] > second[1]:
-                curr = first[1] - 1
-                last_row = second[1]
-            else:
-                curr = second[1] - 1
-                last_row = first[1]
-            while curr > last_row:
-                print(curr, first[1])
-                if self.board[curr][first[0]]:
-                    return False
-                curr -= 1
-        elif first[1] == second[1]: # check columns because they're on the same row
-            pass
-        else: # check diagonals, start with checking if they're on the same diagonal
-            pass
+        if first[0] == second[0]:
+            step_col = 0
+        else:
+            # -1 indicates that the piece is moving to the left, to vertical line "a"
+            step_col = 1 if second[0] > first[0] else -1
+        
+        if first[1] == second[1]:
+            step_row = 0
+        else:
+            # -1 indicates that the piece is moving up to the 8th horizontal line
+            step_row = 1 if second[1] > first[1] else -1
+
+        start_row = first[1] + step_row
+        start_col = first[0] + step_col
+
+        while (start_row, start_col) != (second[1], second[0]):
+            if self.board[start_row][start_col]:
+                return False
+            start_col += step_col
+            start_row += step_row
         return True
 
     def enemy_present(self, square):
@@ -73,15 +78,24 @@ class engine():
         
     def legal(self, first, second, piece):  # impement validation here
         print(self.log)
+        # check if the right piece was selected 
+        color = {-1: "w", 1: "b"}
+        if piece[0] != color[self.turn]:
+            print("Not your turn idiot")
+            return False
         row_dif = abs(second[1] - first[1])
         col_dif = abs(second[0] - first[0])
-        color = {-1: "w", 1: "b"}
-        if piece[1] == "p": # pawns
-            print(self.turn)
 
-            # check if the right piece was selected or if the user is trying to move a pawn backwards
-            if piece[0] != color[self.turn] or second[1] - first[1] != row_dif * self.turn:
-                print("Not your turn idiot")
+        # knights
+        if piece[1] == "n":
+            pass
+        
+        # pawns
+        if piece[1] == "p":
+            print(self.turn)
+            # check if the user is trying to move a pawn backwards
+            if second[1] - first[1] != row_dif * self.turn:
+                print("You can't move a pawn backwards idiot")
                 return False
             
             # moving forward
@@ -99,11 +113,29 @@ class engine():
                     return True
                 # check for an en passant
                 return self.en_passant(color[self.turn - (2 * self.turn)], second[0], first[1])
-            
-        elif piece[1] == "r": # rooks
-            return True
-        else:
-            return False
+
+        # rooks    
+        elif piece[1] == "r": 
+            if row_dif and col_dif:
+                return False
+            return self.is_line_clear(first, second)
+        # bishops
+        elif piece[1] == "b":
+            if row_dif != col_dif:
+                return False
+            return self.is_line_clear(first, second)
+
+        # queens
+        elif piece[1] == "q":
+            # check if a move is in a straight line
+            if row_dif == 0 or col_dif == 0 or row_dif == col_dif:
+                return self.is_line_clear(first, second)
+        
+        # kings
+        elif piece[1] == "k":
+            if row_dif <= 1 and col_dif <= 1:
+                return self.is_safe(second)
+        return False
         
     def make_move(self, clicks):
         # first = clicks[0]
@@ -116,6 +148,14 @@ class engine():
             self.board[clicks[0][1]][clicks[0][0]] = ""    
             self.board[clicks[1][1]][clicks[1][0]] = moving_piece
             self.log.append(f'{moving_piece} {self.coords[clicks[1][0]]}{8 - clicks[1][1]}') # append the move to the log
-            self.turn = self.turn - (2 * self.turn)
+            self.turn *= -1
             return True
         return False
+    
+
+
+# to do next:
+# finish move validation
+# implement checks
+# implement is_safe function
+# implement checkmates
