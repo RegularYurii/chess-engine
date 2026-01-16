@@ -45,9 +45,10 @@ def main(): # limit the frames
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                print(game.log)
                 location = pygame.mouse.get_pos() # the location (x, y) of the mouse on the board when clicked
-                col = int(location[0] // SQ_SIZE)
-                row = int(location[1] // SQ_SIZE)
+                col = int(location[0] // SQ_SIZE) # X
+                row = int(location[1] // SQ_SIZE) # Y
                 game.highlights = []
                 if col > 7: # meaning the tools are being used (fix the hardcoding later)
                     if col == 8 and row == 0:
@@ -56,26 +57,22 @@ def main(): # limit the frames
                         game.restart() # better to implement in engine.py
                     elif col == 9 and row == 0:
                         pass # implement drawing here
-                elif sq_clicked == (col, row):  # check if the last click was on the same square, if so clear the sq_clicked 
+                elif sq_clicked == (row, col):  # check if the last click was on the same square, if so clear the sq_clicked 
                     sq_clicked = ()
                     clicks = []
                 else:
-                    sq_clicked = (col, row)
+                    sq_clicked = (row, col)
                     clicks.append(sq_clicked)
                     hl_pos_moves(sq_clicked, game)
                 if len(clicks) == 2: # if two squares were clicked and they're not the same then make a move
                     #
-                    if not game.board[clicks[0][1]][clicks[0][0]]:
+                    if game.board[clicks[0][0]][clicks[0][1]] and game.board[clicks[0][0]][clicks[0][1]][0] == game.color[game.turn] and game.make_move(clicks):
+                        sq_clicked = ()
+                        clicks = []
+                        game.highlights = []
+                    else:
                         clicks = [sq_clicked]
                         game.highlights.append(sq_clicked)
-                    else:
-                        if game.make_move(clicks):
-                            sq_clicked = ()
-                            clicks = []
-                            game.highlights = []
-                        else:
-                            clicks = [sq_clicked]
-                            game.highlights.append(sq_clicked)
         
         draw_board(screen)
         draw_objects(screen, game.board, game.highlights)
@@ -88,7 +85,7 @@ def draw_board(screen):
     for row in range(DIMENSIONS):
         for column in range(DIMENSIONS):
             colour = colours[(column + row) % 2]
-            pygame.draw.rect(screen, colour, pygame.Rect(column * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE))
+            pygame.draw.rect(screen, colour, pygame.Rect(column * SQ_SIZE, row * SQ_SIZE, SQ_SIZE, SQ_SIZE)) 
 
 
 
@@ -102,7 +99,7 @@ def draw_objects(screen, board, highlights):
 
     # draw highlights
     for h in highlights:
-        screen.blit(IMAGES["cl"], pygame.Rect(h[0] * SQ_SIZE, h[1] * SQ_SIZE, SQ_SIZE, SQ_SIZE))
+        screen.blit(IMAGES["cl"], pygame.Rect(h[1] * SQ_SIZE, h[0] * SQ_SIZE, SQ_SIZE, SQ_SIZE))
 
     # draw tools
     tool_num = 2 # maybe make it global
