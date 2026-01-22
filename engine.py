@@ -56,15 +56,20 @@ class engine():
             # if a king was moved update its position
             if moving_piece[1] == "k":
                 self.kings[self.turn] = clicks[1]
+
             # make sure there's no check when the piece is moved
-            if self.is_safe(self.kings[self.turn]): 
+            if not self.is_attacked(self.kings[self.turn]):
                 self.add_to_log(clicks[0], clicks[1], moving_piece)
                 self.turn *= -1
                 # add cache maybe                     change self.kings(kings' positions) and self.turn
-                self.check = not self.is_safe(self.kings[self.turn])
+                self.check = self.is_attacked(self.kings[self.turn])
                 print("Is check -", self.check)
                 return True
             # if the move results in checking yourself place the moving piece back
+            last_move = self.log[-1].split(" ")
+            if last_move[-1] == "double":
+                self.board[8-4][clicks[1][1]] = f'{self.color[-self.turn]}p'
+                
             self.place_piece(clicks[1], target_piece)
             self.place_piece(clicks[0], moving_piece)
             self.kings[self.turn] = king_sq
@@ -72,10 +77,9 @@ class engine():
     
     # it's a separate method because the a move can be a castle, or a double pawn move. maybe implement taking moves as well
     def add_to_log(self, moving_from, moving_to, moving_piece):
-        print(moving_from, moving_to)
         type = "" # type of the move (double pawn move, castling)
         from_row = moving_from[0]
-        from_col = moving_from[1]
+        #from_col = moving_from[1]
         to_row = moving_to[0]
         to_col = moving_to[1]
         if moving_piece[1] == "p" and abs(to_row - from_row) == 2:
@@ -153,35 +157,50 @@ class engine():
         return False
     
     def is_legal_king(self, second, row_dif, col_dif):
-        return row_dif <= 1 and col_dif <= 1 and self.is_safe(second)
+        return row_dif <= 1 and col_dif <= 1 and not self.is_attacked(second)
 
+    def is_attacked(self, square):
+        return bool(self.attacked_from(square))
+        
+    # returns the squares the given square is attacked from
+    def attacked_from(self, square): # optimise later
+        # check if enemy's king is ajdacent to the square or if non king piece is attacking the square
+        attacking_squares = []
+        attacking_squares += (self.attacked_by_non_king_from(square))
+        attacking_squares += (self.attacked_by_king(square))
+        #print(attacking_squares)
 
+        return attacking_squares
 
-
-    def is_safe(self, square): # optimise later
-        # check if the square is on an attacked line
-        if self.is_q_r_b_attacking(square):
-            return False
-        # check if the square is attacked by a knight
-        if self.is_knight_attacking(square):
-            return False
-        # check if a pawn is attacking
-        if self.is_pawn_attacking(square):
-            return False
-        # check if enemy's king is ajdacent to the square
-        return not self.is_king_attacking(square)
+        
     
-    def is_knight_attacking(self, square):
+    def attacked_by_non_king_from(self, square):
+        attacking_squares = []
+        # check if the square is on an attacked line
+        attacking_squares += (self.attacked_by_q_r_b_from(square))
+
+        # check if the square is attacked by a knight
+        attacking_squares += (self.attacked_by_knight_from(square))
+        
+        # check if a pawn is attacking
+        attacking_squares += (self.attacked_by_pawn_from(square))
+        
+        return attacking_squares
+
+        
+    def attacked_by_knight_from(self, square):
+        attacking_squares = []
         directions = [(-2, -1), (-2, 1),(-1, -2),(-1, 2),
                     (2, -1), (2, 1), (1, 2),(1, -2)]
         for d in directions:
             row = square[0] + d[0]
             col = square[1] + d[1]                                                                                          # fix the hardcoding
             if (row >= 0) and (row <= 7) and (col >= 0) and (col <= 7) and self.board[row][col] and self.board[row][col] == f'{self.color[-self.turn]}n':
-                return True
-        return False
+                attacking_squares.append((row, col))
+        return attacking_squares
     
-    def is_q_r_b_attacking(self, square):
+    def attacked_by_q_r_b_from(self, square):
+        attacking_squares = []
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0), # (col, row) changes when checking horizontal & vertical lines
                     (-1, 1), (1, 1), (-1, -1), (1, -1)] # (col, row) changes when checking diagonals
         for d in directions:
@@ -194,29 +213,33 @@ class engine():
                         break
                     if (row == square[0] or col == square[1]):
                         if piece[1] in "qr": # return if on the same line but the met piece is not a rook or a queen
-                            return True
+                            attacking_squares.append((row, col))
                         break
                     if abs(row - square[0]) == abs(col - square[1]):
                         if piece[1] in "bq":
-                            return True
+                            attacking_squares.append((row, col))
                         break
                 row += d[0]
                 col += d[1]
-        return False
+        return attacking_squares
 
-    def is_pawn_attacking(self, square): # fix
+    def attacked_by_pawn_from(self, square): # fix
+        attacking_squares = []
         directions = [(-1, -1),(-1, 1),(1, -1),(1, 1)]
         for d in directions:
             row = square[0] - d[0]
             col = square[1] - d[1]                                                                # d[0] == -self.turn if a pawn is attacking in the right direction 
             if (row >= 0) and (row <= 7) and (col >= 0) and (col <= 7) and self.board[row][col] and d[0] == -self.turn and self.board[row][col] == f'{self.color[-self.turn]}p':
-                return True
-        return False
+                attacking_squares.append((row, col))
+        return attacking_squares
     
-    def is_king_attacking(self, square):
+    def attacked_by_king(self, square):
+        attacking_squares = []
         row_dif = abs(self.kings[-self.turn][0] - square[0])
         col_dif = abs(self.kings[-self.turn][1] - square[1])
-        return row_dif <= 1 and col_dif <= 1    
+        if row_dif <= 1 and col_dif <= 1:
+            attacking_squares.append((self.kings[-self.turn][0], self.kings[-self.turn][1]))
+        return attacking_squares
 
 
 
@@ -248,7 +271,6 @@ class engine():
         # square = row, col
         return self.board[square[0]][square[1]] and self.board[square[0]][square[1]][0] == self.color[-self.turn]
     
-    # might be better to add "double step" mark in log to check if the last move was a double step
     def en_passant(self, target_col, target_row): 
         if self.log:
             last_move = self.log[-1].split(" ")
@@ -259,13 +281,54 @@ class engine():
                 return True
         return False
         
+    def is_stalemate(self):
+        return 0
 
     def is_checkmate(self):
-        pass
+        if not self.check:
+            return False
+        attacking_squares = self.attacked_from(self.kings[self.turn])
+        # check if it's a double check
+        if len(attacking_squares) > 1:
+            # return king_can_escape (if can't it's a checkmate)
+            return False
+        attacking_piece = self.board[attacking_squares[0][0]][attacking_squares[0][1]]
+        if self.can_be_taken(attacking_squares[0][0], attacking_squares[0][1], attacking_piece):
+            return False
+        # elif can_be_blocked
+        # elif king_can_escape
+        return False
+    
+    def can_be_taken(self, row, col, attacking_piece):
+        # check if getting rid of the attacking piece saves from a check (we can't simply pu "" because it might be a battery of rooks)
+        if attacking_piece[1] == "n":
+            self.board[row][col] = f'{attacking_piece[0]}q'
+        else:
+            self.board[row][col] = f'{attacking_piece[0]}n'
+        # if capturing saves from a check, make sure it is possible to take the piece, otherwise return False
+        should_be_taken = not self.is_attacked(self.kings[self.turn])
+        self.board[row][col] = attacking_piece
+        if should_be_taken:
+            #print(self.attacked_by_non_king_from(attacking_square), self.attacked_by_king(attacking_square))
+            # maybe pass self.turn to the functions
+            self.turn *= -1
+            can_take = bool(self.attacked_by_non_king_from((row, col)) or self.attacked_by_king((row, col)))
+            self.turn *= -1
+            if can_take:
+                return True
+        return False
 
 # to do next:
 # implement checkmates
+# implement castling (and its validation)
+
+# figure out how to get rid of "undo move" logic, and fix the board mutations
+
+# get rid of or change the piece_color
+# fix the confusing attacked_from etc functions
 # optimise, make the functions shorter
+# 
 
-
+# add caching
+        
 # implement no-draw and chess tic tac toe

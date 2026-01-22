@@ -67,6 +67,11 @@ def main(): # limit the frames
                 if len(clicks) == 2: # if two squares were clicked and they're not the same then make a move
                     #
                     if game.board[clicks[0][0]][clicks[0][1]] and game.board[clicks[0][0]][clicks[0][1]][0] == game.color[game.turn] and game.make_move(clicks):
+                        print("is checkmate - ", game.is_checkmate())
+                        # if game.is_checkmate():
+                            # print(f'{game.color[-game.turn]} won!')
+                        # elif game.is_stalemate():
+                            # print("Stalemate!")
                         sq_clicked = ()
                         clicks = []
                         game.highlights = []
